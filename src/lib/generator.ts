@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { MaterialJSONSchema, cleanAndParseJSON } from "./schema_validation";
+import { MaterialJSONSchema } from "./schema_validation";
 
 const SYSTEM_PROMPT = `
 # Role
@@ -83,8 +83,24 @@ export async function generateMaterial(apiKey: string, videoId: string, transcri
   try {
     const result = await model.generateContent(prompt);
     const text = result.response.text();
-    const json = cleanAndParseJSON(text);
-    return MaterialJSONSchema.parse(json);
+
+    // Clean JSON: Remove markdown blocks and conversational text
+    // Extract everything from first '{' to last '}'
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("No JSON found in response:", text);
+      throw new Error("AI response did not contain valid JSON.");
+    }
+    const jsonStr = jsonMatch[0];
+
+    try {
+      const json = JSON.parse(jsonStr);
+      return MaterialJSONSchema.parse(json);
+    } catch (e) {
+      console.error("JSON Parse/Validate Error", e);
+      console.log("Raw Text:", text);
+      throw new Error("Failed to parse AI response. Try again.");
+    }
   } catch (error) {
     console.error("Generation failed:", error);
     throw error;

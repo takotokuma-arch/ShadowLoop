@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../db/db';
-import { getVideoId, getThumbnailUrl } from '../lib/youtube';
+import { getVideoId, getThumbnailUrl, fetchTranscript } from '../lib/youtube';
 import { generateMaterial } from '../lib/generator';
 import { Search, PlayCircle, FileText, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 type Step = 'url' | 'transcript' | 'generating';
 
@@ -19,7 +20,7 @@ export function CreatePage() {
     const [loading, setLoading] = useState(false);
 
     // Analyze URL
-    const handleAnalyze = () => {
+    const handleAnalyze = async () => {
         setError('');
         const id = getVideoId(url);
         if (!id) {
@@ -27,7 +28,21 @@ export function CreatePage() {
             return;
         }
         setVideoId(id);
-        setStep('transcript');
+
+        setLoading(true);
+        try {
+            const text = await fetchTranscript(id);
+            setTranscript(text);
+            toast.success("Transcript fetched automatically!");
+        } catch (e) {
+            console.log("Auto-fetch failed", e);
+            // Fallback to manual input (implicit as transcript remains empty)
+            setError('Could not fetch transcript automatically. Please paste it manually.');
+            toast.error("Could not fetch transcript. Please paste manually.");
+        } finally {
+            setLoading(false);
+            setStep('transcript');
+        }
     };
 
     // Generate Material
@@ -59,7 +74,9 @@ export function CreatePage() {
             navigate(`/player/${id}`);
         } catch (err) {
             console.error(err);
-            setError('Generation failed. Please try again or check the transcript format. ' + (err as Error).message);
+            const msg = (err as Error).message;
+            setError('Generation failed. ' + msg);
+            toast.error("Generation failed: " + msg);
             setStep('transcript');
         } finally {
             setLoading(false);
@@ -90,7 +107,7 @@ export function CreatePage() {
                         className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
                     >
                         <PlayCircle className="w-5 h-5" />
-                        Analyze Video
+                        {loading ? 'Analyzing...' : 'Analyze Video'}
                     </button>
 
                     {error && (
@@ -126,12 +143,10 @@ export function CreatePage() {
                         <div className="space-y-1">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                                 <FileText className="w-5 h-5 text-indigo-400" />
-                                Transcript Required
+                                Transcript
                             </h3>
                             <p className="text-sm text-slate-400">
-                                Due to YouTube restrictions, we need you to manually copy the transcript.
-                                <br />
-                                <span className="opacity-70">Go to video → ...More → Show Transcript → Copy all text.</span>
+                                {transcript ? 'Review the fetched transcript below.' : 'Could not fetch automatically. Please paste transcript manually.'}
                             </p>
                         </div>
 

@@ -115,6 +115,7 @@ export function PlayerPage() {
                         videoId={material.youtube_id}
                         onReady={handleReady}
                         onStateChange={handleStateChange}
+                        playbackRate={playbackRate}
                     />
                 </div>
 
