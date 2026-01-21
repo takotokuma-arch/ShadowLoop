@@ -4,6 +4,7 @@ export interface ScriptToken {
     is_stressed: boolean;
     is_sense_group_end: boolean;
     start?: number;
+    end?: number;
 }
 
 // 2. Vocabulary Item

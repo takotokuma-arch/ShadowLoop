@@ -1,12 +1,19 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { MaterialJSONSchema } from "./schema_validation";
+import { jsonrepair } from 'jsonrepair';
 
 const SYSTEM_PROMPT = `
 # Role
 You are an expert English coach specializing in Shadowing techniques. Your task is to convert a raw YouTube transcript into a structured JSON learning material tailored for Japanese learners.
 
 # Output Format (Strict JSON)
-You must output ONLY a valid JSON object. Do not encompass the JSON in markdown code blocks. Do not add conversational text. Use the following schema:
+You must output ONLY a valid JSON object. 
+- Do not encompass the JSON in markdown code blocks (e.g. no \`\`\`json).
+- Do not add conversational text or preambles.
+- Ensure all keys and string values are properly double-quoted.
+- Handle trailing commas gracefully if possible, but try to avoid them.
+
+Use the following schema:
 
 {
   "youtube_id": "{{VIDEO_ID}}",
@@ -70,11 +77,7 @@ Split the transcript into "Learning Units".
 
 export async function generateMaterial(apiKey: string, videoId: string, transcript: string) {
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
-  // Basic truncation to avoid token limits (approx 15-20k chars is safe for standard usage, though 1.5 Pro has huge context)
-  // 1.5 Pro has 1M+ context window, so we don't really need to truncate for typical YouTube videos (< 1 hour).
-  // But to be safe and save cost/time, maybe warn if too long. For now pass all.
+  const model = genAI.getGenerativeModel({ model: "gemini-3.0-flash-preview" }); // Setting to 3.0 preview as requested
 
   const prompt = SYSTEM_PROMPT
     .replace("{{VIDEO_ID}}", videoId)
@@ -84,22 +87,31 @@ export async function generateMaterial(apiKey: string, videoId: string, transcri
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
-    // Clean JSON: Remove markdown blocks and conversational text
-    // Extract everything from first '{' to last '}'
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("No JSON found in response:", text);
-      throw new Error("AI response did not contain valid JSON.");
-    }
-    const jsonStr = jsonMatch[0];
+    console.log("Raw AI Response length:", text.length);
 
+    // Robust JSON Parsing with jsonrepair
     try {
-      const json = JSON.parse(jsonStr);
+      // First try to strip markdown code blocks if present
+      let cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
+
+      // If it looks like it has extra text, try to find the first { and last }
+      const firstBrace = cleanText.indexOf('{');
+      const lastBrace = cleanText.lastIndexOf('}');
+
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+      }
+
+      // Repair and Parse
+      const repaired = jsonrepair(cleanText);
+      const json = JSON.parse(repaired);
+
       return MaterialJSONSchema.parse(json);
+
     } catch (e) {
       console.error("JSON Parse/Validate Error", e);
-      console.log("Raw Text:", text);
-      throw new Error("Failed to parse AI response. Try again.");
+      console.log("Failed Text:", text);
+      throw new Error("Failed to parse AI response. The model output was invalid JSON.");
     }
   } catch (error) {
     console.error("Generation failed:", error);

@@ -128,7 +128,19 @@ export function PlayerPage() {
                     onToggleSenseGroups={() => setShowSenseGroups(!showSenseGroups)}
                 />
 
-                <Recorder />
+                <Recorder onPlayModel={() => {
+                    if (player) {
+                        if (loopingUnit) {
+                            player.seekTo(loopingUnit.start, true);
+                            player.playVideo();
+                        } else {
+                            // If no unit selected, replay last 5 seconds or from start
+                            const time = player.getCurrentTime();
+                            player.seekTo(Math.max(0, time - 5), true);
+                            player.playVideo();
+                        }
+                    }
+                }} />
             </div>
 
             {/* Scrollable Script Column */}

@@ -7,11 +7,18 @@ export default {
     theme: {
         extend: {
             colors: {
-                // We are using slate/indigo/teal by default in classes, 
-                // no need to custom define unless we want specific overrides.
-                // But let's add the Nordic palette references just in case specific RGBs are needed later
-                // or to satisfy the "Configuring" part of the plan if I missed it.
-                // For now, standard colors are fine as I used standard class names.
+                nordic: {
+                    bg: '#020617', // Slate 950
+                    surface: '#0f172a', // Slate 900
+                    highlight: '#1e293b', // Slate 800
+                    text: '#f8fafc', // Slate 50
+                    muted: '#94a3b8', // Slate 400
+                    accent: '#6366f1', // Indigo 500
+                    accentHover: '#818cf8', // Indigo 400
+                }
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
             }
         },
     },

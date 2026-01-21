@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../db/db';
-import { getVideoId, getThumbnailUrl, fetchTranscript } from '../lib/youtube';
+import { getVideoId, getThumbnailUrl, fetchTranscript, fetchRawTranscript } from '../lib/youtube';
 import { generateMaterial } from '../lib/generator';
+import { alignMaterial } from '../lib/alignment';
 import { Search, PlayCircle, FileText, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -61,7 +62,16 @@ export function CreatePage() {
         setError('');
 
         try {
-            const material = await generateMaterial(apiKey, videoId, transcript);
+            let material = await generateMaterial(apiKey, videoId, transcript);
+
+            // Attempt Karaoke Alignment
+            try {
+                const rawSegments = await fetchRawTranscript(videoId);
+                material = alignMaterial(material, rawSegments);
+                console.log("Aligned material with raw timestamps");
+            } catch (alignErr) {
+                console.warn("Alignment failed (skipping karaoke mode):", alignErr);
+            }
 
             // Save to DB
             const id = await db.materials.add({

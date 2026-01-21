@@ -99,21 +99,27 @@ export function ScriptView({
                                     ? "font-bold text-slate-900 dark:text-white"
                                     : "font-medium text-slate-500 dark:text-slate-400"
                             )}>
-                                {unit.script.map((token, idx) => (
-                                    <span
-                                        key={idx}
-                                        className={cn(
-                                            "transition-colors hover:text-indigo-700 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-white/5 rounded px-0.5",
-                                            token.is_stressed ? "font-bold text-slate-900 dark:text-slate-50" : "font-normal",
-                                            // Simple highlighting if we had word-level timestamps, but we don't for now.
-                                        )}
-                                    >
-                                        {token.text}{" "}
-                                        {showSenseGroups && token.is_sense_group_end && (
-                                            <span className="text-indigo-400/50 dark:text-indigo-500/50 font-light select-none">/ </span>
-                                        )}
-                                    </span>
-                                ))}
+                                {unit.script.map((token, idx) => {
+                                    const isCurrentToken = token.start !== undefined && token.end !== undefined && currentTime >= token.start && currentTime < token.end;
+
+                                    return (
+                                        <span
+                                            key={idx}
+                                            className={cn(
+                                                "transition-all duration-100 rounded px-0.5 inline-block origin-bottom",
+                                                token.is_stressed ? "font-bold text-slate-900 dark:text-slate-50" : "font-normal",
+                                                isCurrentToken
+                                                    ? "text-indigo-600 dark:text-indigo-300 font-extrabold scale-110 bg-indigo-100/50 dark:bg-indigo-500/20"
+                                                    : "hover:text-indigo-700 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-white/5"
+                                            )}
+                                        >
+                                            {token.text}{" "}
+                                            {showSenseGroups && token.is_sense_group_end && (
+                                                <span className="text-indigo-400/50 dark:text-indigo-500/50 font-light select-none">/ </span>
+                                            )}
+                                        </span>
+                                    );
+                                })}
                             </div>
 
                             {unit.japanese_translation && (
